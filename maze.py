@@ -182,6 +182,60 @@ class Maze:
             for cell in row:
                 cell.visited = False
 
+    def solve(self):
+        return self.solve_r(0, 0)
+
+    def solve_r(self, i, j):
+        self.__animate()
+        cell = self.__cells[i][j]
+        cell.visited = True
+
+        # Determine end cell
+        x_end, y_end = self.num_cols-1, self.num_rows-1
+        if x_end == i and y_end == j:
+            return True
+        directions = {'left': (-1,0), 'right': (1, 0), 'up': (0, -1), 'down': (0, 1) }
+        for direction, (x,y) in directions.items():
+            new_i, new_j = i + x, j + y
+            match direction:
+                case "left":
+                    if i > 0:
+                        new_cell = self.__cells[new_i][new_j]
+                        if not cell.has_left_wall and not new_cell.visited:
+                            cell.draw_move(new_cell)
+                            result = self.solve_r(new_i, new_j)
+                            if result:
+                                return result
+                            new_cell.draw_move(cell, True)
+                case "right":
+                    if i < x_end:
+                        new_cell = self.__cells[new_i][new_j]
+                        if not cell.has_right_wall and not new_cell.visited:
+                            cell.draw_move(new_cell)
+                            result = self.solve_r(new_i, new_j)
+                            if result:
+                                return result
+                            new_cell.draw_move(cell, True)
+                case "up":
+                    if j > 0:
+                        new_cell = self.__cells[new_i][new_j]
+                        if not cell.has_top_wall and not new_cell.visited:
+                            cell.draw_move(new_cell)
+                            result = self.solve_r(new_i, new_j)
+                            if result:
+                                return result
+                            new_cell.draw_move(cell, True)
+                case "down":
+                    if j < y_end:
+                        new_cell = self.__cells[new_i][new_j]
+                        if not cell.has_bottom_wall and not new_cell.visited:
+                            cell.draw_move(new_cell)
+                            result = self.solve_r(new_i, new_j)
+                            if result:
+                                return result
+                            new_cell.draw_move(cell, True)
+        return False
+
     def __animate(self):
         if not self.__win:
             return
