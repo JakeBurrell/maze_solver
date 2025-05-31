@@ -1,16 +1,8 @@
-from maze import Window, Point, Line, Cell
+from maze import Window, Point, Line, Cell, Maze
 
 def main():
     win = Window(800, 600)
-
-    cell = Cell(win)
-    cell2 = Cell(win)
-
-    cell.draw(10, 10, 50, 50)
-    cell2.draw(100, 100, 140, 140)
-
-    cell.draw_move(cell2, undo=True)
-
+    maze = Maze(10, 10, 20, 15, 20, 20, win, 1)
     win.wait_for_close()
 
 

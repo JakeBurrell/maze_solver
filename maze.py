@@ -1,5 +1,6 @@
 from tkinter import Tk, BOTH, Canvas
 import time
+import random
 
 class Point:
     def __init__(self, x, y):
@@ -17,11 +18,12 @@ class Line:
             self.point_b.y, fill=fill_color, width=2)
 
 class Cell:
-    def __init__(self, window) -> None:
+    def __init__(self, window=None) -> None:
        self.has_left_wall = True
        self.has_right_wall = True
        self.has_top_wall = True
        self.has_bottom_wall = True
+       self.visited = False
        self.__x1 = -1
        self.__x2 = -1
        self.__y1 = -1
@@ -34,16 +36,30 @@ class Cell:
         self.__y1 = y1
         self.__y2 = y2
         lines = []
+        broken_lines = []
         if self.has_left_wall:
             lines.append(Line(Point(x1, y1), Point(x1, y2)))
+        else:
+            broken_lines.append(Line(Point(x1, y1), Point(x1, y2)))
         if self.has_right_wall:
             lines.append(Line(Point(x2, y1), Point(x2, y2)))
+        else:
+            broken_lines.append(Line(Point(x2, y1), Point(x2, y2)))
         if self.has_top_wall:
             lines.append(Line(Point(x1, y1), Point(x2, y1)))
+        else:
+            broken_lines.append(Line(Point(x1, y1), Point(x2, y1)))
         if self.has_bottom_wall:
             lines.append(Line(Point(x1, y2), Point(x2, y2)))
+        else:
+            broken_lines.append(Line(Point(x1, y2), Point(x2, y2)))
+        if not self.__win:
+            return
         for line in lines:
             self.__win.draw_line(line, "black")
+        for line in broken_lines:
+            self.__win.draw_line(line, "white")
+
 
     def draw_move(self, to_cell, undo=False):
         c_x = self.__x1 + abs((self.__x2 - self.__x1)//2)
@@ -54,7 +70,8 @@ class Cell:
         color = 'red'
         if undo:
             color = 'gray'
-        self.__win.draw_line(line, color)
+        if self.__win:
+            self.__win.draw_line(line, color)
 
 class Maze:
     def __init__(
@@ -65,7 +82,8 @@ class Maze:
             num_cols,
             cell_size_x,
             cell_size_y,
-            win,
+            win = None,
+            seed = None,
         ):
             self.__x1 = x1
             self.__y1 = y1
@@ -76,18 +94,33 @@ class Maze:
             self.__win = win
             self.__cells = []
 
+            if seed:
+                random.seed(seed)
+
             self.__create_cells()
+            self.__break_entrance_and_exit()
+            self.__break_walls_r(0,0)
+            self.__reset_cells_visited()
+
 
     def __create_cells(self):
-
-        for row_i in range(self.num_rows):
-            col = []
-            for row_i in range(self.num_cols):
-                col.append(Cell(self.__win))
-            self.__cells.append(col)
-        for i in range(self.num_rows):
+        for col_i in range(self.num_cols):
+            row = []
+            for row_i in range(self.num_rows):
+                row.append(Cell(self.__win))
+            self.__cells.append(row)
+        for i in range(self.num_cols):
             for j in range(self.num_rows):
                 self.__draw_cell(i, j)
+
+
+    def __break_entrance_and_exit(self):
+        self.__cells[0][0].has_top_wall = False
+        self.__draw_cell(0, 0)
+        x, y = self.num_cols-1, self.num_rows-1
+        self.__cells[x][y].has_bottom_wall = False
+        self.__draw_cell(x, y)
+
 
     def __draw_cell(self, i, j):
         x_pos = self.__x1 + (i * self.cell_size_x)
@@ -96,11 +129,64 @@ class Maze:
         x_pos + self.cell_size_x, y_pos + self.cell_size_y)
         self.__animate()
 
+
+    def __break_walls_r(self, i, j):
+        self.__cells[i][j].visited = True
+
+        while (True):
+            # Cells to visit
+            to_visit = []
+
+            # Check Cells to visit next
+            # Left
+            if i > 0 and not self.__cells[i-1][j].visited:
+                to_visit.append((i-1, j))
+            # Right
+            if i < self.num_cols-1 and not self.__cells[i+1][j].visited:
+                to_visit.append((i+1, j))
+            # Up
+            if j > 0 and not self.__cells[i][j-1].visited:
+                to_visit.append((i, j-1))
+            # Down
+            if j < self.num_rows-1 and not self.__cells[i][j+1].visited:
+                to_visit.append((i, j+1))
+
+            if len(to_visit) == 0:
+                self.__draw_cell(i,j)
+                return
+
+            index_to_visit = random.randrange(len(to_visit))
+            next_to_visit = to_visit[index_to_visit]
+
+            # Left
+            if next_to_visit[0] == i - 1:
+                self.__cells[i][j].has_left_wall = False
+                self.__cells[i-1][j].has_right_wall = False
+            # Right
+            if next_to_visit[0] == i + 1:
+                self.__cells[i][j].has_right_wall = False
+                self.__cells[i+1][j].has_left_wall = False
+            # Up
+            if next_to_visit[1] == j - 1:
+                self.__cells[i][j].has_top_wall = False
+                self.__cells[i][j-1].has_bottom_wall = False
+            # Down
+            if next_to_visit[1] == j + 1:
+                self.__cells[i][j].has_bottom_wall = False
+                self.__cells[i][j+1].has_top_wall = False
+
+            self.__break_walls_r(next_to_visit[0], next_to_visit[1])
+
+    def __reset_cells_visited(self):
+        for row in self.__cells:
+            for cell in row:
+                cell.visited = False
+
     def __animate(self):
         if not self.__win:
             return
         self.__win.redraw()
-        time.sleep(0.05)
+        time.sleep(0.01)
 
 
 class Window:
